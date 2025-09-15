@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Railway Traffic Control - Section Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h1 {
+            color: #2c3e50;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #27ae60;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+        
+        .panel {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        .panel h2 {
+            color: #2c3e50;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .full-width {
+            grid-column: 1 / -1;
+        }
+        
+        .train-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        
+        .train-table th,
+        .train-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .train-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .train-type {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        
+        .train-type.EXPRESS {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .train-type.PASSENGER {
+            background: #3498db;
+            color: white;
+        }
+        
+        .train-type.FREIGHT {
+            background: #f39c12;
+            color: white;
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        
+        .status.running {
+            background: #27ae60;
+            color: white;
+        }
+        
+        .status.scheduled {
+            background: #95a5a6;
+            color: white;
+        }
+        
+        .status.delayed {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .status.held {
+            background: #f39c12;
+            color: white;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .metric-card {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .metric-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .metric-label {
+            font-size: 0.9rem;
+            color: #6c757d;
+            margin-top: 0.5rem;
+        }
+        
+        .recommendations {
+            margin-top: 1rem;
+        }
+        
+        .recommendation {
+            background: #f8f9fa;
+            border-left: 4px solid #3498db;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            border-radius: 4px;
+        }
+        
+        .recommendation.delay {
+            border-color: #e74c3c;
+        }
+        
+        .recommendation.hold {
+            border-color: #f39c12;
+        }
+        
+        .recommendation.proceed {
+            border-color: #27ae60;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background 0.3s ease;
+        }
+        
+        .btn:hover {
+            background: #2980b9;
+        }
+        
+        .btn.danger {
+            background: #e74c3c;
+        }
+        
+        .btn.danger:hover {
+            background: #c0392b;
+        }
+        
+        .loading {
+            text-align: center;
+            color: #6c757d;
+            font-style: italic;
+        }
+        
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 1rem;
+            border-radius: 6px;
+            border-left: 4px solid #e74c3c;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+                margin: 1rem auto;
+                padding: 0 1rem;
+            }
+            
+            .header {
+                padding: 1rem;
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            .controls {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🚂 Railway Traffic Control System</h1>
+        <div class="status-indicator">
+            <div class="status-dot"></div>
+            <span id="system-status">System Online</span>
+            <span id="current-time"></span>
+        </div>
+    </div>
+    
+    <div class="container">
+        <!-- Current Trains Panel -->
+        <div class="panel">
+            <h2>🚆 Current Trains</h2>
+            <div class="controls">
+                <button class="btn" onclick="refreshTrains()">🔄 Refresh</button>
+                <button class="btn" onclick="runOptimization()">⚡ Optimize</button>
+            </div>
+            <div id="trains-content">
+                <div class="loading">Loading trains...</div>
+            </div>
+        </div>
+        
+        <!-- Section Status Panel -->
+        <div class="panel">
+            <h2>📊 Section Metrics</h2>
+            <div id="metrics-content">
+                <div class="loading">Loading metrics...</div>
+            </div>
+        </div>
+        
+        <!-- Recommendations Panel -->
+        <div class="panel full-width">
+            <h2>💡 Control Recommendations</h2>
+            <div class="controls">
+                <button class="btn" onclick="runSimulation()">🎯 Run Simulation</button>
+                <button class="btn danger" onclick="clearHistory()">🗑️ Clear History</button>
+            </div>
+            <div id="recommendations-content">
+                <div class="loading">No recommendations available. Run optimization to get started.</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let currentTrains = [];
+        let currentRecommendations = [];
+        let refreshInterval;
+        
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDashboard();
+            startAutoRefresh();
+        });
+        
+        function initializeDashboard() {
+            updateCurrentTime();
+            loadTrains();
+            loadMetrics();
+            loadRecommendations();
+        }
+        
+        function startAutoRefresh() {
+            // Update time every second
+            setInterval(updateCurrentTime, 1000);
+            
+            // Refresh data every 30 seconds
+            refreshInterval = setInterval(() => {
+                loadTrains();
+                loadMetrics();
+            }, 30000);
+        }
+        
+        function updateCurrentTime() {
+            const now = new Date();
+            document.getElementById('current-time').textContent = now.toLocaleTimeString();
+        }
+        
+        async function loadTrains() {
+            try {
+                const response = await fetch('/api/trains');
+                currentTrains = await response.json();
+                displayTrains(currentTrains);
+            } catch (error) {
+                console.error('Error loading trains:', error);
+                document.getElementById('trains-content').innerHTML = 
+                    '<div class="error">Failed to load trains data</div>';
+            }
+        }
+        
+        async function loadMetrics() {
+            try {
+                const response = await fetch('/api/metrics');
+                const metrics = await response.json();
+                displayMetrics(metrics);
+            } catch (error) {
+                console.error('Error loading metrics:', error);
+                document.getElementById('metrics-content').innerHTML = 
+                    '<div class="error">Failed to load metrics</div>';
+            }
+        }
+        
+        async function loadRecommendations() {
+            try {
+                const response = await fetch('/api/recommendations');
+                currentRecommendations = await response.json();
+                displayRecommendations(currentRecommendations);
+            } catch (error) {
+                console.error('Error loading recommendations:', error);
+                displayRecommendations([]);
+            }
+        }
+        
+        function displayTrains(trains) {
+            if (!trains || trains.length === 0) {
+                document.getElementById('trains-content').innerHTML = 
+                    '<div class="loading">No trains in section</div>';
+                return;
+            }
+            
+            let html = '<table class="train-table">';
+            html += '<thead><tr><th>Train</th><th>Type</th><th>Schedule</th><th>Position</th><th>Status</th><th>Priority</th></tr></thead>';
+            html += '<tbody>';
+            
+            trains.forEach(train => {
+                const arrival = new Date(train.scheduled_arrival).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                const status = train.is_delayed ? 'delayed' : train.status;
+                
+                html += `<tr>
+                    <td><strong>${train.train_number}</strong></td>
+                    <td><span class="train-type ${train.train_type}">${train.train_type}</span></td>
+                    <td>${arrival}${train.delay_minutes > 0 ? ` (+${train.delay_minutes}min)` : ''}</td>
+                    <td>${train.current_position || 'Unknown'}</td>
+                    <td><span class="status ${status}">${status.toUpperCase()}</span></td>
+                    <td>${train.priority_score}</td>
+                </tr>`;
+            });
+            
+            html += '</tbody></table>';
+            document.getElementById('trains-content').innerHTML = html;
+        }
+        
+        function displayMetrics(metrics) {
+            if (!metrics.train_metrics) {
+                document.getElementById('metrics-content').innerHTML = 
+                    '<div class="loading">No metrics available</div>';
+                return;
+            }
+            
+            const trainMetrics = metrics.train_metrics;
+            const sectionMetrics = metrics.section_metrics;
+            const conflictMetrics = metrics.conflict_metrics;
+            
+            let html = '<div class="metrics-grid">';
+            
+            html += `<div class="metric-card">
+                <div class="metric-value">${trainMetrics.total_trains}</div>
+                <div class="metric-label">Total Trains</div>
+            </div>`;
+            
+            html += `<div class="metric-card">
+                <div class="metric-value">${trainMetrics.on_time_percentage.toFixed(1)}%</div>
+                <div class="metric-label">On Time</div>
+            </div>`;
+            
+            if (sectionMetrics) {
+                html += `<div class="metric-card">
+                    <div class="metric-value">${(sectionMetrics.utilization_rate * 100).toFixed(1)}%</div>
+                    <div class="metric-label">Utilization</div>
+                </div>`;
+            }
+            
+            if (conflictMetrics) {
+                html += `<div class="metric-card">
+                    <div class="metric-value">${conflictMetrics.total_conflicts}</div>
+                    <div class="metric-label">Conflicts</div>
+                </div>`;
+            }
+            
+            html += '</div>';
+            document.getElementById('metrics-content').innerHTML = html;
+        }
+        
+        function displayRecommendations(recommendations) {
+            if (!recommendations || recommendations.length === 0) {
+                document.getElementById('recommendations-content').innerHTML = 
+                    '<div class="loading">No recommendations available. Run optimization to get started.</div>';
+                return;
+            }
+            
+            let html = '<div class="recommendations">';
+            
+            recommendations.forEach(rec => {
+                html += `<div class="recommendation ${rec.action}">
+                    <strong>Train ${rec.train_id}</strong>: ${rec.action.toUpperCase()}
+                    ${rec.delay_minutes ? ` (${rec.delay_minutes} min delay)` : ''}
+                    <br><small>${rec.reason}</small>
+                </div>`;
+            });
+            
+            html += '</div>';
+            document.getElementById('recommendations-content').innerHTML = html;
+        }
+        
+        async function refreshTrains() {
+            await loadTrains();
+            await loadMetrics();
+        }
+        
+        async function runOptimization() {
+            try {
+                document.getElementById('recommendations-content').innerHTML = 
+                    '<div class="loading">Running optimization...</div>';
+                
+                const response = await fetch('/api/optimize', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({})
+                });
+                
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    displayRecommendations(result.recommendations);
+                    await loadMetrics();
+                } else {
+                    document.getElementById('recommendations-content').innerHTML = 
+                        `<div class="error">Optimization failed: ${result.error_message}</div>`;
+                }
+            } catch (error) {
+                console.error('Error running optimization:', error);
+                document.getElementById('recommendations-content').innerHTML = 
+                    '<div class="error">Failed to run optimization</div>';
+            }
+        }
+        
+        async function runSimulation() {
+            try {
+                document.getElementById('recommendations-content').innerHTML = 
+                    '<div class="loading">Running simulation...</div>';
+                
+                const response = await fetch('/api/simulate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        scenario_name: 'High Traffic Simulation',
+                        num_trains: 8,
+                        delay_probability: 0.3
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    displayRecommendations(result.recommendations);
+                } else {
+                    document.getElementById('recommendations-content').innerHTML = 
+                        `<div class="error">Simulation failed: ${result.error_message}</div>`;
+                }
+            } catch (error) {
+                console.error('Error running simulation:', error);
+                document.getElementById('recommendations-content').innerHTML = 
+                    '<div class="error">Failed to run simulation</div>';
+            }
+        }
+        
+        function clearHistory() {
+            if (confirm('Are you sure you want to clear all recommendations?')) {
+                document.getElementById('recommendations-content').innerHTML = 
+                    '<div class="loading">No recommendations available. Run optimization to get started.</div>';
+            }
+        }
+    </script>
+</body>
+</html>
